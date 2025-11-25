@@ -12,6 +12,8 @@ import { getReviewStatus } from './services/srsService';
 import { auth, provider } from './firebase';
 import { signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, User, signOut } from 'firebase/auth';
 import { Loader2, LogIn, Mail, Lock } from 'lucide-react';
+import { doc, setDoc } from 'firebase/firestore'; // 👈 确保引入了 setDoc 和 doc
+import { db, auth, provider } from './firebase'; // 👈 确保引入了 db
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -30,25 +32,40 @@ const App: React.FC = () => {
 // 1. 监听登录状态
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      // 🔴 关键修复：一旦状态变化，先锁住保存功能（设为正在加载）
       setLoading(true);
-      
       setUser(currentUser);
+      
       if (currentUser) {
-        // 如果登录了，去云端拉取数据
+        // 👇👇👇【新增代码】登录成功后，把用户信息存到数据库 👇👇👇
+        try {
+          await setDoc(doc(db, "users", currentUser.uid), {
+            email: currentUser.email,
+            displayName: currentUser.displayName || '未命名用户',
+            photoURL: currentUser.photoURL || '',
+            lastLogin: new Date().toISOString() // 顺便记录最后登录时间
+          }, { merge: true }); // merge: true 表示如果已有数据，只更新字段，不覆盖旧数据
+        } catch (e) {
+          console.error("保存用户信息失败:", e);
+        }
+        // 👆👆👆【新增结束】👆👆👆
+
+        // 拉取笔记数据
         try {
           const cloudEntries = await getEntries();
           const cloudStats = await getStats();
-          setEntries(cloudEntries || []); // 确保不为 undefined
+          setEntries(cloudEntries || []);
           setStats(cloudStats || []);
         } catch (error) {
           console.error("加载数据出错:", error);
         }
       } else {
-        // 没登录，清空本地显示
         setEntries([]);
         setStats([]);
       }
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
       
       // 🟢 等一切都搞定后，再解锁（加载完成）
       setLoading(false);
