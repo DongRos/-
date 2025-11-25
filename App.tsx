@@ -36,11 +36,13 @@ const App: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
+  // 2. 保存数据
   useEffect(() => {
-    if (user && entries.length > 0) {
+    // 只要加载完了(loading为false)且有人登录，就同步数据（即使是空数组也要存）
+    if (!loading && user) {
       saveEntries(entries);
     }
-  }, [entries, user]);
+  }, [entries, user, loading]); // 👈 别忘了这里 dependency 数组里要加上 loading
 
   const handleLogin = async () => {
     try {
