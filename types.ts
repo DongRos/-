@@ -1,3 +1,4 @@
+// types.ts
 export enum SRSStage {
   New = 0,
   Learning = 1,
@@ -47,4 +48,5 @@ export interface DailyStats {
   newItemsLearned: number;
 }
 
-export type ViewState = 'dashboard' | 'add-video' | 'review' | 'library';
+// 👇👇👇 修改这里：增加了 'favorites' 和 'profile' 👇👇👇
+export type ViewState = 'dashboard' | 'add-video' | 'review' | 'library' | 'favorites' | 'profile';
