@@ -1,31 +1,63 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { StudyEntry, SRSStage, Vocabulary, GrammarPoint } from '../types';
 import { analyzeRawNotes } from '../services/geminiService';
-import { Save, Sparkles, Loader2, Video, FileText, CheckCircle, Circle } from 'lucide-react';
+import { 
+  Save, Sparkles, Loader2, Video, FileText, CheckCircle, Circle,
+  Bold, Italic, Underline, Strikethrough, List, Heading1, Heading2, Quote, Code, AlignLeft, AlignCenter, AlignRight
+} from 'lucide-react';
 
 interface AddVideoProps {
   onSave: (entry: StudyEntry) => void;
   onCancel: () => void;
 }
 
+// 工具栏按钮组件
+const ToolbarBtn = ({ icon: Icon, onClick, title, active = false }: any) => (
+  <button
+    onClick={(e) => { e.preventDefault(); onClick(); }}
+    title={title}
+    className={`p-2 rounded-lg transition-all ${
+      active 
+        ? 'bg-indigo-100 text-indigo-700' 
+        : 'text-slate-500 hover:bg-slate-200 hover:text-slate-700'
+    }`}
+  >
+    <Icon size={18} />
+  </button>
+);
+
 const AddVideo: React.FC<AddVideoProps> = ({ onSave, onCancel }) => {
   const [title, setTitle] = useState('');
+  // notes 存储 HTML 格式，用于保存
   const [notes, setNotes] = useState('');
+  const editorRef = useRef<HTMLDivElement>(null);
+  
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analyzedData, setAnalyzedData] = useState<{ vocab: Vocabulary[], grammar: GrammarPoint[], summary: string } | null>(null);
   
-  // State for selection
   const [selectedVocabIndices, setSelectedVocabIndices] = useState<Set<number>>(new Set());
   const [selectedGrammarIndices, setSelectedGrammarIndices] = useState<Set<number>>(new Set());
 
+  // 执行富文本命令
+  const execCmd = (command: string, value: string | undefined = undefined) => {
+    document.execCommand(command, false, value);
+    editorRef.current?.focus();
+  };
+
   const handleAnalyze = async () => {
-    if (!notes.trim()) return;
+    // 关键点：给 AI 分析时，要提取纯文本 (innerText)，不要带 HTML 标签
+    const rawText = editorRef.current?.innerText || '';
+    
+    if (!rawText.trim()) {
+      alert("请先输入笔记内容");
+      return;
+    }
+
     setIsAnalyzing(true);
     try {
-      const result = await analyzeRawNotes(notes);
+      const result = await analyzeRawNotes(rawText);
       setAnalyzedData(result);
       if (result) {
-        // Default select all
         setSelectedVocabIndices(new Set(result.vocab.map((_, i) => i)));
         setSelectedGrammarIndices(new Set(result.grammar.map((_, i) => i)));
       }
@@ -38,40 +70,34 @@ const AddVideo: React.FC<AddVideoProps> = ({ onSave, onCancel }) => {
 
   const toggleVocab = (index: number) => {
     const newSet = new Set(selectedVocabIndices);
-    if (newSet.has(index)) {
-      newSet.delete(index);
-    } else {
-      newSet.add(index);
-    }
+    if (newSet.has(index)) newSet.delete(index);
+    else newSet.add(index);
     setSelectedVocabIndices(newSet);
   };
 
   const toggleGrammar = (index: number) => {
     const newSet = new Set(selectedGrammarIndices);
-    if (newSet.has(index)) {
-      newSet.delete(index);
-    } else {
-      newSet.add(index);
-    }
+    if (newSet.has(index)) newSet.delete(index);
+    else newSet.add(index);
     setSelectedGrammarIndices(newSet);
   };
 
   const handleSave = () => {
     if (!title.trim()) return;
 
-    // Filter data based on user selection
     const finalVocab = analyzedData ? analyzedData.vocab.filter((_, i) => selectedVocabIndices.has(i)) : [];
     const finalGrammar = analyzedData ? analyzedData.grammar.filter((_, i) => selectedGrammarIndices.has(i)) : [];
 
+    // 保存时，notes 包含 HTML 格式
     const newEntry: StudyEntry = {
       id: crypto.randomUUID(),
       title,
       dateCreated: Date.now(),
-      rawNotes: notes,
+      rawNotes: notes, // 这里保存的是带格式的 HTML
       structuredVocabulary: finalVocab,
       structuredGrammar: finalGrammar,
       summary: analyzedData?.summary || '',
-      nextReviewDate: Date.now(), // Due immediately for first view
+      nextReviewDate: Date.now(),
       interval: 0,
       easeFactor: 2.5,
       repetitionCount: 0,
@@ -82,11 +108,11 @@ const AddVideo: React.FC<AddVideoProps> = ({ onSave, onCancel }) => {
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6 animate-fade-in-up">
+    <div className="max-w-4xl mx-auto space-y-6 animate-fade-in-up pb-10">
       <div className="flex items-center justify-between mb-2">
         <div>
           <h2 className="text-2xl font-bold text-slate-900">记录新视频</h2>
-          <p className="text-slate-500">记录你的学习内容，AI 帮你整理后可点选保存。</p>
+          <p className="text-slate-500">记录你的学习内容，支持富文本编辑，AI 帮你整理。</p>
         </div>
         <button onClick={onCancel} className="text-slate-400 hover:text-slate-600 font-medium text-sm">取消</button>
       </div>
@@ -106,27 +132,62 @@ const AddVideo: React.FC<AddVideoProps> = ({ onSave, onCancel }) => {
           />
         </div>
 
-        {/* Notes Input */}
+        {/* Rich Text Editor */}
         <div>
           <label className="block text-sm font-semibold text-slate-700 mb-2 flex items-center">
-            <FileText size={16} className="mr-2 text-primary-500" /> 原始笔记
+            <FileText size={16} className="mr-2 text-primary-500" /> 原始笔记 (支持格式编辑)
           </label>
-          <textarea
-            className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all outline-none bg-slate-50 focus:bg-white h-40 resize-none"
-            placeholder="粘贴你听到的句子、单词或语法规则..."
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-          />
-          <div className="mt-3 flex justify-end">
-            <button
+          
+          <div className="border border-slate-200 rounded-xl overflow-hidden bg-white focus-within:ring-4 focus-within:ring-primary-500/10 focus-within:border-primary-500 transition-all">
+            {/* Toolbar */}
+            <div className="flex flex-wrap items-center gap-1 p-2 border-b border-slate-100 bg-slate-50/50">
+              <div className="flex space-x-1 border-r border-slate-200 pr-2 mr-1">
+                <ToolbarBtn icon={Bold} title="加粗 (Ctrl+B)" onClick={() => execCmd('bold')} />
+                <ToolbarBtn icon={Italic} title="斜体 (Ctrl+I)" onClick={() => execCmd('italic')} />
+                <ToolbarBtn icon={Underline} title="下划线 (Ctrl+U)" onClick={() => execCmd('underline')} />
+                <ToolbarBtn icon={Strikethrough} title="删除线" onClick={() => execCmd('strikeThrough')} />
+              </div>
+              
+              <div className="flex space-x-1 border-r border-slate-200 pr-2 mr-1">
+                <ToolbarBtn icon={Heading1} title="大标题" onClick={() => execCmd('formatBlock', 'H3')} />
+                <ToolbarBtn icon={Heading2} title="小标题" onClick={() => execCmd('formatBlock', 'H4')} />
+                <ToolbarBtn icon={Quote} title="引用块" onClick={() => execCmd('formatBlock', 'BLOCKQUOTE')} />
+                <ToolbarBtn icon={Code} title="代码块" onClick={() => execCmd('formatBlock', 'PRE')} />
+              </div>
+
+              <div className="flex space-x-1 border-r border-slate-200 pr-2 mr-1">
+                 <ToolbarBtn icon={List} title="无序列表" onClick={() => execCmd('insertUnorderedList')} />
+              </div>
+
+              <div className="flex space-x-1">
+                 <ToolbarBtn icon={AlignLeft} title="左对齐" onClick={() => execCmd('justifyLeft')} />
+                 <ToolbarBtn icon={AlignCenter} title="居中" onClick={() => execCmd('justifyCenter')} />
+                 <ToolbarBtn icon={AlignRight} title="右对齐" onClick={() => execCmd('justifyRight')} />
+              </div>
+            </div>
+
+            {/* Editable Area */}
+            <div
+              ref={editorRef}
+              contentEditable
+              className="w-full p-5 outline-none overflow-y-auto prose prose-slate max-w-none text-slate-700"
+              style={{ minHeight: '320px', maxHeight: '500px' }} // 👈 这里增大了高度
+              onInput={(e) => setNotes(e.currentTarget.innerHTML)}
+              placeholder="在这里粘贴或输入笔记..."
+            />
+          </div>
+          
+          <div className="mt-4 flex justify-between items-center text-sm text-slate-400">
+             <span>字数: {editorRef.current?.innerText.length || 0}</span>
+             <button
               onClick={handleAnalyze}
-              disabled={isAnalyzing || !notes.trim()}
-              className="flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 shadow-md shadow-indigo-200"
+              disabled={isAnalyzing}
+              className="flex items-center px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 shadow-md shadow-indigo-200"
             >
               {isAnalyzing ? (
-                <><Loader2 size={16} className="mr-2 animate-spin" /> 正在分析...</>
+                <><Loader2 size={18} className="mr-2 animate-spin" /> 正在深度分析...</>
               ) : (
-                <><Sparkles size={16} className="mr-2" /> AI 智能整理笔记</>
+                <><Sparkles size={18} className="mr-2" /> AI 智能整理笔记</>
               )}
             </button>
           </div>
