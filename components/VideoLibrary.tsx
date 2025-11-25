@@ -1,3 +1,4 @@
+// components/VideoLibrary.tsx
 import React, { useState, useEffect } from 'react';
 import { StudyEntry } from '../types';
 import { Search, Calendar, ChevronRight, ArrowLeft, Book, Type, FileText, Hash, Star, Settings, Trash2, Pin, CheckSquare, Square, X, Check, AlertCircle } from 'lucide-react';
@@ -5,9 +6,10 @@ import { Search, Calendar, ChevronRight, ArrowLeft, Book, Type, FileText, Hash, 
 interface LibraryProps {
   entries: StudyEntry[];
   onUpdateEntries: (entries: StudyEntry[]) => void;
+  onlyFavorites?: boolean; // 👈 新增这个属性
 }
 
-const VideoLibrary: React.FC<LibraryProps> = ({ entries, onUpdateEntries }) => {
+const VideoLibrary: React.FC<LibraryProps> = ({ entries, onUpdateEntries, onlyFavorites = false }) => { // 👈 默认值为 false
   const [search, setSearch] = useState('');
   const [selectedEntry, setSelectedEntry] = useState<StudyEntry | null>(null);
   
@@ -22,10 +24,13 @@ const VideoLibrary: React.FC<LibraryProps> = ({ entries, onUpdateEntries }) => {
   }, [selectedIds, isManaging]);
 
   // Sorting: Pinned items first, then by date (newest first)
-  const filtered = entries.filter(e => 
-    e.title.toLowerCase().includes(search.toLowerCase()) || 
-    e.rawNotes.toLowerCase().includes(search.toLowerCase())
-  ).sort((a, b) => {
+  const filtered = entries.filter(e => {
+    const matchesSearch = e.title.toLowerCase().includes(search.toLowerCase()) || 
+                          e.rawNotes.toLowerCase().includes(search.toLowerCase());
+    // 👇 新增筛选逻辑
+    const matchesFav = onlyFavorites ? e.isFavorite : true;
+    return matchesSearch && matchesFav;
+  }).sort((a, b) => {
     // Check pinned status first
     if (a.isPinned && !b.isPinned) return -1;
     if (!a.isPinned && b.isPinned) return 1;
@@ -54,13 +59,11 @@ const VideoLibrary: React.FC<LibraryProps> = ({ entries, onUpdateEntries }) => {
   const handleBatchAction = (action: 'pin' | 'favorite') => {
     if (selectedIds.size === 0) return;
     
-    // Reset delete confirm if user clicks other actions
     setDeleteConfirm(false);
 
     let updated = [...entries];
     
     if (action === 'pin') {
-      // Toggle logic: If all selected are pinned, unpin them. Otherwise, pin them all.
       const selectedEntries = updated.filter(e => selectedIds.has(e.id));
       const allPinned = selectedEntries.every(e => e.isPinned);
       
@@ -91,11 +94,9 @@ const VideoLibrary: React.FC<LibraryProps> = ({ entries, onUpdateEntries }) => {
       return;
     }
 
-    // Execute Delete
     const updated = entries.filter(e => !selectedIds.has(e.id));
     onUpdateEntries(updated);
     
-    // Reset states
     setIsManaging(false);
     setSelectedIds(new Set());
     setDeleteConfirm(false);
@@ -204,7 +205,7 @@ const VideoLibrary: React.FC<LibraryProps> = ({ entries, onUpdateEntries }) => {
           )}
         </div>
 
-        {/* Raw Notes (Collapsible feel) */}
+        {/* Raw Notes */}
         <div className="pt-4 border-t border-slate-200">
            <div className="flex items-center mb-4 text-slate-400">
              <FileText size={16} className="mr-2" />
@@ -225,9 +226,10 @@ const VideoLibrary: React.FC<LibraryProps> = ({ entries, onUpdateEntries }) => {
       {/* Header Actions */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">我的知识库</h1>
+          {/* 👇 动态标题 */}
+          <h1 className="text-2xl font-bold text-slate-900">{onlyFavorites ? '我的收藏' : '我的知识库'}</h1>
           <p className="text-slate-500">
-            {isManaging ? `已选择 ${selectedIds.size} 个项目` : '管理和回顾你的学习笔记。'}
+            {isManaging ? `已选择 ${selectedIds.size} 个项目` : (onlyFavorites ? '回顾你收藏的重点内容。' : '管理和回顾你的学习笔记。')}
           </p>
         </div>
         
@@ -237,7 +239,7 @@ const VideoLibrary: React.FC<LibraryProps> = ({ entries, onUpdateEntries }) => {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
             <input 
               type="text"
-              placeholder="搜索主题或笔记内容..."
+              placeholder="搜索主题..."
               className="pl-10 pr-4 py-2 rounded-lg bg-slate-800 border-2 border-primary-500 text-white placeholder-slate-400 focus:ring-4 focus:ring-primary-500/20 outline-none w-full md:w-64 transition-all"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -261,7 +263,7 @@ const VideoLibrary: React.FC<LibraryProps> = ({ entries, onUpdateEntries }) => {
         </div>
       </div>
 
-      {/* Batch Action Bar (Sticky) */}
+      {/* Batch Action Bar */}
       {isManaging && (
         <div className="sticky top-0 z-30 bg-white/90 backdrop-blur-md p-4 rounded-xl shadow-lg border border-slate-200 flex items-center justify-between animate-slide-in-down mb-4">
           <button onClick={toggleAll} className="flex items-center text-sm font-bold text-slate-600 hover:text-slate-900">
@@ -288,7 +290,6 @@ const VideoLibrary: React.FC<LibraryProps> = ({ entries, onUpdateEntries }) => {
             </button>
             <div className="w-px h-6 bg-slate-200 mx-2 self-center"></div>
             
-            {/* Delete Button with 2-step confirmation */}
             <button 
               onClick={(e) => {
                 e.stopPropagation();
@@ -313,9 +314,9 @@ const VideoLibrary: React.FC<LibraryProps> = ({ entries, onUpdateEntries }) => {
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-slate-400">
             <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-              <Book size={32} className="opacity-50" />
+              {onlyFavorites ? <Star size={32} className="opacity-50" /> : <Book size={32} className="opacity-50" />}
             </div>
-            <p>没有找到相关条目。</p>
+            <p>{onlyFavorites ? '你还没有收藏任何笔记。' : '没有找到相关条目。'}</p>
           </div>
         ) : (
           filtered.map(entry => {
@@ -330,13 +331,11 @@ const VideoLibrary: React.FC<LibraryProps> = ({ entries, onUpdateEntries }) => {
                   ${isSelected ? 'border-primary-500 ring-1 ring-primary-500 bg-primary-50/10' : 'border-slate-100'}
                 `}
               >
-                {/* Pin/Favorite Indicators (Top Right Corner) */}
                 <div className="absolute top-0 right-0 p-2 flex space-x-1">
                    {entry.isPinned && <Pin size={16} className="text-primary-500 fill-primary-500 transform rotate-45" />}
                    {entry.isFavorite && <Star size={16} className="text-yellow-400 fill-yellow-400" />}
                 </div>
 
-                {/* Left Border Indicator based on Stage */}
                 <div className={`absolute left-0 top-0 bottom-0 w-1 ${
                    entry.stage === 3 ? 'bg-green-500' :
                    entry.stage === 2 ? 'bg-blue-500' :
@@ -344,7 +343,6 @@ const VideoLibrary: React.FC<LibraryProps> = ({ entries, onUpdateEntries }) => {
                 }`} />
 
                 <div className="flex items-center w-full">
-                  {/* Checkbox for Management Mode */}
                   {isManaging && (
                     <div className="mr-4 pl-2 flex-shrink-0 text-slate-400">
                       {isSelected 
