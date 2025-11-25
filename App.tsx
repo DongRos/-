@@ -1,19 +1,17 @@
-// App.tsx
 import React, { useState, useEffect } from 'react';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import AddVideo from './components/AddVideo';
 import ReviewSession from './components/ReviewSession';
 import VideoLibrary from './components/VideoLibrary';
-import UserProfile from './components/UserProfile'; // 👈 引入新组件
+import UserProfile from './components/UserProfile';
 import { ViewState, StudyEntry, DailyStats } from './types';
 import { getEntries, saveEntries, getStats, saveStats, recordActivity } from './services/storageService';
 import { getReviewStatus } from './services/srsService';
-import { auth, provider } from './firebase';
+import { auth, provider, db } from './firebase'; // 确保这里引入了 db
+import { doc, setDoc } from 'firebase/firestore'; // 确保这里引入了 setDoc
 import { signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, User, signOut } from 'firebase/auth';
 import { Loader2, LogIn, Mail, Lock } from 'lucide-react';
-import { doc, setDoc } from 'firebase/firestore'; // 👈 确保引入了 setDoc 和 doc
-import { db, auth, provider } from './firebase'; // 👈 确保引入了 db
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -29,27 +27,26 @@ const App: React.FC = () => {
   const [stats, setStats] = useState<DailyStats[]>([]);
   const [reviewQueue, setReviewQueue] = useState<StudyEntry[]>([]);
 
-// 1. 监听登录状态
+  // 1. 监听登录状态 (已修复数据丢失问题 + 自动保存用户信息)
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setLoading(true);
+      setLoading(true); // 🔒 锁定加载状态
       setUser(currentUser);
       
       if (currentUser) {
-        // 👇👇👇【新增代码】登录成功后，把用户信息存到数据库 👇👇👇
+        // 1.1 保存/更新用户信息到数据库
         try {
           await setDoc(doc(db, "users", currentUser.uid), {
             email: currentUser.email,
             displayName: currentUser.displayName || '未命名用户',
             photoURL: currentUser.photoURL || '',
-            lastLogin: new Date().toISOString() // 顺便记录最后登录时间
-          }, { merge: true }); // merge: true 表示如果已有数据，只更新字段，不覆盖旧数据
+            lastLogin: new Date().toISOString()
+          }, { merge: true });
         } catch (e) {
           console.error("保存用户信息失败:", e);
         }
-        // 👆👆👆【新增结束】👆👆👆
 
-        // 拉取笔记数据
+        // 1.2 拉取云端数据
         try {
           const cloudEntries = await getEntries();
           const cloudStats = await getStats();
@@ -57,22 +54,21 @@ const App: React.FC = () => {
           setStats(cloudStats || []);
         } catch (error) {
           console.error("加载数据出错:", error);
+          setEntries([]);
+          setStats([]);
         }
       } else {
+        // 没登录，清空本地
         setEntries([]);
         setStats([]);
       }
-      setLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
       
-      // 🟢 等一切都搞定后，再解锁（加载完成）
-      setLoading(false);
+      setLoading(false); // 🔓 解锁加载状态
     });
     return () => unsubscribe();
   }, []);
 
+  // 2. 自动保存数据 (仅在加载完成且有用户时执行)
   useEffect(() => {
     if (!loading && user) {
       saveEntries(entries);
@@ -118,7 +114,7 @@ const App: React.FC = () => {
     signOut(auth);
     setEmail('');
     setPassword('');
-    setView('dashboard'); // 退出后重置视图
+    setView('dashboard');
   };
 
   const handleNavigate = (newView: ViewState) => {
@@ -228,7 +224,6 @@ const App: React.FC = () => {
     );
   }
 
-  // 👇👇👇 这里的 Layout 现在接收 user 和 onLogout 属性 👇👇👇
   return (
     <div className="relative">
       <Layout currentView={view} onNavigate={handleNavigate} user={user} onLogout={handleLogout}>
@@ -236,7 +231,6 @@ const App: React.FC = () => {
         {view === 'add-video' && <AddVideo onSave={handleAddEntry} onCancel={() => setView('dashboard')} />}
         {view === 'review' && <ReviewSession entriesToReview={reviewQueue} onCompleteItem={handleReviewComplete} onExit={() => setView('dashboard')} />}
         {view === 'library' && <VideoLibrary entries={entries} onUpdateEntries={handleUpdateEntries} />}
-        {/* 👇 新增的两个页面 */}
         {view === 'favorites' && <VideoLibrary entries={entries} onUpdateEntries={handleUpdateEntries} onlyFavorites={true} />}
         {view === 'profile' && <UserProfile user={user} onLogout={handleLogout} />}
       </Layout>
