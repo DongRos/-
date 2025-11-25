@@ -27,18 +27,30 @@ const App: React.FC = () => {
   const [stats, setStats] = useState<DailyStats[]>([]);
   const [reviewQueue, setReviewQueue] = useState<StudyEntry[]>([]);
 
+// 1. 监听登录状态
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      // 🔴 关键修复：一旦状态变化，先锁住保存功能（设为正在加载）
+      setLoading(true);
+      
       setUser(currentUser);
       if (currentUser) {
-        const cloudEntries = await getEntries();
-        const cloudStats = await getStats();
-        setEntries(cloudEntries);
-        setStats(cloudStats);
+        // 如果登录了，去云端拉取数据
+        try {
+          const cloudEntries = await getEntries();
+          const cloudStats = await getStats();
+          setEntries(cloudEntries || []); // 确保不为 undefined
+          setStats(cloudStats || []);
+        } catch (error) {
+          console.error("加载数据出错:", error);
+        }
       } else {
+        // 没登录，清空本地显示
         setEntries([]);
         setStats([]);
       }
+      
+      // 🟢 等一切都搞定后，再解锁（加载完成）
       setLoading(false);
     });
     return () => unsubscribe();
