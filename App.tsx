@@ -1,23 +1,23 @@
+// App.tsx
 import React, { useState, useEffect } from 'react';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import AddVideo from './components/AddVideo';
 import ReviewSession from './components/ReviewSession';
 import VideoLibrary from './components/VideoLibrary';
+import UserProfile from './components/UserProfile'; // 👈 引入新组件
 import { ViewState, StudyEntry, DailyStats } from './types';
 import { getEntries, saveEntries, getStats, saveStats, recordActivity } from './services/storageService';
 import { getReviewStatus } from './services/srsService';
 import { auth, provider } from './firebase';
-// 👇 引入了新的登录方法
 import { signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, User, signOut } from 'firebase/auth';
-import { Loader2, LogIn, Mail, Lock, UserPlus } from 'lucide-react';
+import { Loader2, LogIn, Mail, Lock } from 'lucide-react';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   
-  // 登录表单的状态
-  const [isRegistering, setIsRegistering] = useState(false); // 是注册模式还是登录模式？
+  const [isRegistering, setIsRegistering] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
@@ -44,14 +44,12 @@ const App: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
-  // 只要加载完了且有人登录，就同步数据
   useEffect(() => {
     if (!loading && user) {
       saveEntries(entries);
     }
   }, [entries, user, loading]);
 
-  // Google 登录
   const handleGoogleLogin = async () => {
     try {
       setAuthError('');
@@ -61,9 +59,8 @@ const App: React.FC = () => {
     }
   };
 
-  // 邮箱登录/注册逻辑
   const handleEmailAuth = async (e: React.FormEvent) => {
-    e.preventDefault(); // 阻止表单默认刷新
+    e.preventDefault();
     setAuthError('');
     
     if (!email || !password) {
@@ -73,14 +70,11 @@ const App: React.FC = () => {
 
     try {
       if (isRegistering) {
-        // 注册新账号
         await createUserWithEmailAndPassword(auth, email, password);
       } else {
-        // 登录已有账号
         await signInWithEmailAndPassword(auth, email, password);
       }
     } catch (error: any) {
-      // 处理常见错误信息，显示中文提示
       let msg = error.message;
       if (msg.includes("auth/invalid-email")) msg = "邮箱格式不正确";
       if (msg.includes("auth/user-not-found")) msg = "该邮箱尚未注册";
@@ -95,6 +89,7 @@ const App: React.FC = () => {
     signOut(auth);
     setEmail('');
     setPassword('');
+    setView('dashboard'); // 退出后重置视图
   };
 
   const handleNavigate = (newView: ViewState) => {
@@ -128,7 +123,6 @@ const App: React.FC = () => {
     return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin" /></div>;
   }
 
-  // 登录界面
   if (!user) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-4">
@@ -141,7 +135,6 @@ const App: React.FC = () => {
           </h1>
           <p className="text-slate-500 mb-8 text-center">同步你的学习数据到云端</p>
 
-          {/* 邮箱密码表单 */}
           <form onSubmit={handleEmailAuth} className="space-y-4 mb-6">
             <div className="relative">
               <Mail className="absolute left-3 top-3 text-slate-400" size={20} />
@@ -206,17 +199,18 @@ const App: React.FC = () => {
     );
   }
 
+  // 👇👇👇 这里的 Layout 现在接收 user 和 onLogout 属性 👇👇👇
   return (
     <div className="relative">
-      <Layout currentView={view} onNavigate={handleNavigate}>
+      <Layout currentView={view} onNavigate={handleNavigate} user={user} onLogout={handleLogout}>
         {view === 'dashboard' && <Dashboard entries={entries} stats={stats} onStartReview={startReview} onAddVideo={() => setView('add-video')} />}
         {view === 'add-video' && <AddVideo onSave={handleAddEntry} onCancel={() => setView('dashboard')} />}
         {view === 'review' && <ReviewSession entriesToReview={reviewQueue} onCompleteItem={handleReviewComplete} onExit={() => setView('dashboard')} />}
         {view === 'library' && <VideoLibrary entries={entries} onUpdateEntries={handleUpdateEntries} />}
+        {/* 👇 新增的两个页面 */}
+        {view === 'favorites' && <VideoLibrary entries={entries} onUpdateEntries={handleUpdateEntries} onlyFavorites={true} />}
+        {view === 'profile' && <UserProfile user={user} onLogout={handleLogout} />}
       </Layout>
-      <button onClick={handleLogout} className="fixed bottom-4 right-4 text-xs text-slate-400 hover:text-red-500 z-50 bg-white/80 px-2 py-1 rounded backdrop-blur-sm border border-slate-200">
-        退出登录
-      </button>
     </div>
   );
 };
