@@ -103,7 +103,7 @@ const ReviewSession: React.FC<ReviewSessionProps> = ({ entriesToReview, onComple
              </div>
           </div>
         ) : (
-           <div className="p-8 flex items-center justify-center bg-white absolute inset-0 top-[50%] z-10">
+           <div className="p-8 flex items-center justify-center bg-white flex-1 w-full">
               <button 
                 onClick={() => setShowAnswer(true)}
                 className="px-8 py-3 bg-slate-900 text-white rounded-xl font-medium shadow-lg hover:bg-slate-800 transition-all transform hover:-translate-y-1"
