@@ -7,9 +7,11 @@ import { Vocabulary, GrammarPoint } from "../types";
 // If running locally without a bundler that injects this, it might fail, but I must follow instructions.
 
 const getAIClient = () => {
-  const apiKey = process.env.API_KEY;
+  // Use trim() to handle potential accidental whitespace from environment variables
+  const apiKey = process.env.API_KEY ? process.env.API_KEY.trim() : "";
+  
   if (!apiKey) {
-    console.warn("API Key not found in process.env. Feature may be disabled.");
+    console.error("Gemini API Key is missing. Please ensure process.env.API_KEY is correctly set in your environment variables for deployment.");
     return null;
   }
   return new GoogleGenAI({ apiKey });

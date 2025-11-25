@@ -42,7 +42,7 @@ const Layout: React.FC<LayoutProps> = ({ currentView, onNavigate, children }) =>
       {/* Mobile Header */}
       <div className="md:hidden bg-white p-4 flex justify-between items-center shadow-sm z-20 sticky top-0">
         <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-teal-400 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-sm">智</div>
+          <div className="w-8 h-8 bg-gradient-to-br from-primary-600 to-indigo-400 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-sm">智</div>
           <span className="font-bold text-lg text-slate-800 tracking-tight">智能英语复盘</span>
         </div>
         <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-slate-600">
@@ -56,7 +56,7 @@ const Layout: React.FC<LayoutProps> = ({ currentView, onNavigate, children }) =>
         ${isMobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}
       `}>
         <div className="hidden md:flex items-center space-x-3 mb-10 px-2">
-           <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-teal-400 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-md shadow-primary-200">智</div>
+           <div className="w-8 h-8 bg-gradient-to-br from-primary-600 to-indigo-400 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-md shadow-primary-200">智</div>
            <span className="font-bold text-xl text-slate-800 tracking-tight">智能英语复盘</span>
         </div>
 
