@@ -1,30 +1,69 @@
+import { db, auth } from '../firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { StudyEntry, DailyStats } from '../types';
 
-const KEYS = {
-  ENTRIES: 'linguaflow_entries',
-  STATS: 'linguaflow_stats'
+const getUserId = () => {
+  const user = auth.currentUser;
+  if (!user) return null;
+  return user.uid;
 };
 
-export const saveEntries = (entries: StudyEntry[]) => {
-  localStorage.setItem(KEYS.ENTRIES, JSON.stringify(entries));
+// --- Entries ---
+
+export const saveEntries = async (entries: StudyEntry[]) => {
+  const uid = getUserId();
+  if (!uid) return;
+  try {
+    await setDoc(doc(db, "users", uid, "data", "entries"), { list: entries });
+  } catch (e) {
+    console.error("Save failed:", e);
+  }
 };
 
-export const getEntries = (): StudyEntry[] => {
-  const data = localStorage.getItem(KEYS.ENTRIES);
-  return data ? JSON.parse(data) : [];
+export const getEntries = async (): Promise<StudyEntry[]> => {
+  const uid = getUserId();
+  if (!uid) return []; 
+  try {
+    const docRef = doc(db, "users", uid, "data", "entries");
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return docSnap.data().list as StudyEntry[];
+    }
+  } catch (e) {
+    console.error("Read failed:", e);
+  }
+  return [];
 };
 
-export const saveStats = (stats: DailyStats[]) => {
-  localStorage.setItem(KEYS.STATS, JSON.stringify(stats));
+// --- Stats ---
+
+export const saveStats = async (stats: DailyStats[]) => {
+  const uid = getUserId();
+  if (!uid) return;
+  try {
+    await setDoc(doc(db, "users", uid, "data", "stats"), { list: stats });
+  } catch (e) {
+    console.error("Save stats failed:", e);
+  }
 };
 
-export const getStats = (): DailyStats[] => {
-  const data = localStorage.getItem(KEYS.STATS);
-  return data ? JSON.parse(data) : [];
+export const getStats = async (): Promise<DailyStats[]> => {
+  const uid = getUserId();
+  if (!uid) return [];
+  try {
+    const docRef = doc(db, "users", uid, "data", "stats");
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return docSnap.data().list as DailyStats[];
+    }
+  } catch (e) {
+    console.error("Read stats failed:", e);
+  }
+  return [];
 };
 
-export const recordActivity = (type: 'review' | 'learn') => {
-  const stats = getStats();
+export const recordActivity = async (type: 'review' | 'learn') => {
+  const stats = await getStats();
   const today = new Date().toISOString().split('T')[0];
   
   let todayStat = stats.find(s => s.date === today);
@@ -36,5 +75,5 @@ export const recordActivity = (type: 'review' | 'learn') => {
   if (type === 'review') todayStat.reviewsCompleted += 1;
   if (type === 'learn') todayStat.newItemsLearned += 1;
 
-  saveStats(stats);
+  await saveStats(stats);
 };
