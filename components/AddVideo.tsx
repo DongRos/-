@@ -3,7 +3,7 @@ import { StudyEntry, SRSStage, Vocabulary, GrammarPoint } from '../types';
 import { analyzeRawNotes } from '../services/geminiService';
 import { 
   Save, Sparkles, Loader2, Video, FileText, CheckCircle, Circle,
-  Bold, Italic, Underline, Strikethrough, List, Heading1, Heading2, Quote, Code, AlignLeft, AlignCenter, AlignRight
+  Bold, Italic, Underline, Strikethrough, List, Heading1, Heading2, Quote, Code, AlignLeft, AlignCenter, AlignRight, Type
 } from 'lucide-react';
 
 interface AddVideoProps {
@@ -11,11 +11,10 @@ interface AddVideoProps {
   onCancel: () => void;
 }
 
-// 修复点1：使用 onMouseDown 代替 onClick，防止按钮点击时输入框失去焦点
 const ToolbarBtn = ({ icon: Icon, action, title, active = false }: any) => (
   <button
     onMouseDown={(e) => { 
-      e.preventDefault(); // 阻止默认行为（防止失去焦点）
+      e.preventDefault(); 
       action(); 
     }}
     title={title}
@@ -31,7 +30,7 @@ const ToolbarBtn = ({ icon: Icon, action, title, active = false }: any) => (
 
 const AddVideo: React.FC<AddVideoProps> = ({ onSave, onCancel }) => {
   const [title, setTitle] = useState('');
-  const [notes, setNotes] = useState(''); // 存储 HTML
+  const [notes, setNotes] = useState('');
   const editorRef = useRef<HTMLDivElement>(null);
   
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -40,12 +39,22 @@ const AddVideo: React.FC<AddVideoProps> = ({ onSave, onCancel }) => {
   const [selectedVocabIndices, setSelectedVocabIndices] = useState<Set<number>>(new Set());
   const [selectedGrammarIndices, setSelectedGrammarIndices] = useState<Set<number>>(new Set());
 
-  // 执行命令
+  // 基础命令执行
   const execCmd = (command: string, value: string | undefined = undefined) => {
     document.execCommand(command, false, value);
-    // 确保命令执行后输入框重新获得焦点（双重保险）
-    if (editorRef.current) {
-       editorRef.current.focus();
+    if (editorRef.current) editorRef.current.focus();
+  };
+
+  // 🔥 修复逻辑：智能切换块级格式 (Toggle Block)
+  const toggleBlock = (tagName: string) => {
+    // 获取当前选区所在的格式标签
+    const currentTag = document.queryCommandValue('formatBlock');
+    
+    // 如果当前已经是这个标签，就还原为普通文本(DIV)；否则设为目标标签
+    if (currentTag && currentTag.toLowerCase() === tagName.toLowerCase()) {
+      execCmd('formatBlock', 'DIV');
+    } else {
+      execCmd('formatBlock', tagName);
     }
   };
 
@@ -94,7 +103,7 @@ const AddVideo: React.FC<AddVideoProps> = ({ onSave, onCancel }) => {
       id: crypto.randomUUID(),
       title,
       dateCreated: Date.now(),
-      rawNotes: notes, // 保存带样式的 HTML
+      rawNotes: notes,
       structuredVocabulary: finalVocab,
       structuredGrammar: finalGrammar,
       summary: analyzedData?.summary || '',
@@ -111,7 +120,6 @@ const AddVideo: React.FC<AddVideoProps> = ({ onSave, onCancel }) => {
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-fade-in-up pb-10">
       
-      {/* 修复点2：手动注入 CSS 样式，解决 Tailwind 重置导致 H1/H2 看起来像普通文本的问题 */}
       <style>{`
         .rich-editor h3 { font-size: 1.5em; font-weight: bold; margin-top: 0.5em; margin-bottom: 0.25em; color: #1e293b; }
         .rich-editor h4 { font-size: 1.25em; font-weight: bold; margin-top: 0.5em; margin-bottom: 0.25em; color: #334155; }
@@ -154,17 +162,21 @@ const AddVideo: React.FC<AddVideoProps> = ({ onSave, onCancel }) => {
           <div className="border border-slate-200 rounded-xl overflow-hidden bg-white focus-within:ring-4 focus-within:ring-primary-500/10 focus-within:border-primary-500 transition-all">
             <div className="flex flex-wrap items-center gap-1 p-2 border-b border-slate-100 bg-slate-50/50 select-none">
               <div className="flex space-x-1 border-r border-slate-200 pr-2 mr-1">
+                {/* 增加了一个正文按钮 (Type 图标) */}
+                <ToolbarBtn icon={Type} title="正文 (清除标题)" action={() => execCmd('formatBlock', 'DIV')} />
+                
+                {/* 这里的 action 改成了 toggleBlock，实现点击两次取消 */}
+                <ToolbarBtn icon={Heading1} title="大标题" action={() => toggleBlock('H3')} />
+                <ToolbarBtn icon={Heading2} title="小标题" action={() => toggleBlock('H4')} />
+                <ToolbarBtn icon={Quote} title="引用块" action={() => toggleBlock('BLOCKQUOTE')} />
+                <ToolbarBtn icon={Code} title="代码块" action={() => toggleBlock('PRE')} />
+              </div>
+              
+              <div className="flex space-x-1 border-r border-slate-200 pr-2 mr-1">
                 <ToolbarBtn icon={Bold} title="加粗" action={() => execCmd('bold')} />
                 <ToolbarBtn icon={Italic} title="斜体" action={() => execCmd('italic')} />
                 <ToolbarBtn icon={Underline} title="下划线" action={() => execCmd('underline')} />
                 <ToolbarBtn icon={Strikethrough} title="删除线" action={() => execCmd('strikeThrough')} />
-              </div>
-              
-              <div className="flex space-x-1 border-r border-slate-200 pr-2 mr-1">
-                <ToolbarBtn icon={Heading1} title="大标题" action={() => execCmd('formatBlock', 'H3')} />
-                <ToolbarBtn icon={Heading2} title="小标题" action={() => execCmd('formatBlock', 'H4')} />
-                <ToolbarBtn icon={Quote} title="引用块" action={() => execCmd('formatBlock', 'BLOCKQUOTE')} />
-                <ToolbarBtn icon={Code} title="代码块" action={() => execCmd('formatBlock', 'PRE')} />
               </div>
 
               <div className="flex space-x-1 border-r border-slate-200 pr-2 mr-1">
@@ -184,6 +196,7 @@ const AddVideo: React.FC<AddVideoProps> = ({ onSave, onCancel }) => {
               className="rich-editor w-full p-5 outline-none overflow-y-auto max-w-none text-slate-700 leading-relaxed"
               style={{ minHeight: '320px', maxHeight: '500px' }}
               onInput={(e) => setNotes(e.currentTarget.innerHTML)}
+              placeholder="请在这里输入内容..."
             />
           </div>
           
