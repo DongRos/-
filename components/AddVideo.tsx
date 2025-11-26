@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { StudyEntry, SRSStage, Vocabulary, GrammarPoint } from '../types';
 import { analyzeRawNotes } from '../services/geminiService';
 import { 
@@ -11,10 +11,13 @@ interface AddVideoProps {
   onCancel: () => void;
 }
 
-// 工具栏按钮组件
-const ToolbarBtn = ({ icon: Icon, onClick, title, active = false }: any) => (
+// 修复点1：使用 onMouseDown 代替 onClick，防止按钮点击时输入框失去焦点
+const ToolbarBtn = ({ icon: Icon, action, title, active = false }: any) => (
   <button
-    onClick={(e) => { e.preventDefault(); onClick(); }}
+    onMouseDown={(e) => { 
+      e.preventDefault(); // 阻止默认行为（防止失去焦点）
+      action(); 
+    }}
     title={title}
     className={`p-2 rounded-lg transition-all ${
       active 
@@ -28,8 +31,7 @@ const ToolbarBtn = ({ icon: Icon, onClick, title, active = false }: any) => (
 
 const AddVideo: React.FC<AddVideoProps> = ({ onSave, onCancel }) => {
   const [title, setTitle] = useState('');
-  // notes 存储 HTML 格式，用于保存
-  const [notes, setNotes] = useState('');
+  const [notes, setNotes] = useState(''); // 存储 HTML
   const editorRef = useRef<HTMLDivElement>(null);
   
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -38,21 +40,21 @@ const AddVideo: React.FC<AddVideoProps> = ({ onSave, onCancel }) => {
   const [selectedVocabIndices, setSelectedVocabIndices] = useState<Set<number>>(new Set());
   const [selectedGrammarIndices, setSelectedGrammarIndices] = useState<Set<number>>(new Set());
 
-  // 执行富文本命令
+  // 执行命令
   const execCmd = (command: string, value: string | undefined = undefined) => {
     document.execCommand(command, false, value);
-    editorRef.current?.focus();
+    // 确保命令执行后输入框重新获得焦点（双重保险）
+    if (editorRef.current) {
+       editorRef.current.focus();
+    }
   };
 
   const handleAnalyze = async () => {
-    // 关键点：给 AI 分析时，要提取纯文本 (innerText)，不要带 HTML 标签
     const rawText = editorRef.current?.innerText || '';
-    
     if (!rawText.trim()) {
       alert("请先输入笔记内容");
       return;
     }
-
     setIsAnalyzing(true);
     try {
       const result = await analyzeRawNotes(rawText);
@@ -88,12 +90,11 @@ const AddVideo: React.FC<AddVideoProps> = ({ onSave, onCancel }) => {
     const finalVocab = analyzedData ? analyzedData.vocab.filter((_, i) => selectedVocabIndices.has(i)) : [];
     const finalGrammar = analyzedData ? analyzedData.grammar.filter((_, i) => selectedGrammarIndices.has(i)) : [];
 
-    // 保存时，notes 包含 HTML 格式
     const newEntry: StudyEntry = {
       id: crypto.randomUUID(),
       title,
       dateCreated: Date.now(),
-      rawNotes: notes, // 这里保存的是带格式的 HTML
+      rawNotes: notes, // 保存带样式的 HTML
       structuredVocabulary: finalVocab,
       structuredGrammar: finalGrammar,
       summary: analyzedData?.summary || '',
@@ -109,6 +110,20 @@ const AddVideo: React.FC<AddVideoProps> = ({ onSave, onCancel }) => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-fade-in-up pb-10">
+      
+      {/* 修复点2：手动注入 CSS 样式，解决 Tailwind 重置导致 H1/H2 看起来像普通文本的问题 */}
+      <style>{`
+        .rich-editor h3 { font-size: 1.5em; font-weight: bold; margin-top: 0.5em; margin-bottom: 0.25em; color: #1e293b; }
+        .rich-editor h4 { font-size: 1.25em; font-weight: bold; margin-top: 0.5em; margin-bottom: 0.25em; color: #334155; }
+        .rich-editor ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 0.5em; }
+        .rich-editor ol { list-style-type: decimal; padding-left: 1.5em; margin-bottom: 0.5em; }
+        .rich-editor blockquote { border-left: 4px solid #cbd5e1; padding-left: 1em; color: #64748b; font-style: italic; margin-bottom: 0.5em; }
+        .rich-editor pre { background-color: #f1f5f9; padding: 0.75em; border-radius: 0.5em; font-family: monospace; font-size: 0.9em; overflow-x: auto; margin-bottom: 0.5em; border: 1px solid #e2e8f0; }
+        .rich-editor b, .rich-editor strong { font-weight: 700; }
+        .rich-editor i, .rich-editor em { font-style: italic; }
+        .rich-editor u { text-decoration: underline; }
+      `}</style>
+
       <div className="flex items-center justify-between mb-2">
         <div>
           <h2 className="text-2xl font-bold text-slate-900">记录新视频</h2>
@@ -118,7 +133,6 @@ const AddVideo: React.FC<AddVideoProps> = ({ onSave, onCancel }) => {
       </div>
 
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
-        {/* Title Input */}
         <div>
           <label className="block text-sm font-semibold text-slate-700 mb-2 flex items-center">
             <Video size={16} className="mr-2 text-primary-500" /> 视频标题 / 主题
@@ -132,48 +146,44 @@ const AddVideo: React.FC<AddVideoProps> = ({ onSave, onCancel }) => {
           />
         </div>
 
-        {/* Rich Text Editor */}
         <div>
           <label className="block text-sm font-semibold text-slate-700 mb-2 flex items-center">
             <FileText size={16} className="mr-2 text-primary-500" /> 原始笔记 (支持格式编辑)
           </label>
           
           <div className="border border-slate-200 rounded-xl overflow-hidden bg-white focus-within:ring-4 focus-within:ring-primary-500/10 focus-within:border-primary-500 transition-all">
-            {/* Toolbar */}
-            <div className="flex flex-wrap items-center gap-1 p-2 border-b border-slate-100 bg-slate-50/50">
+            <div className="flex flex-wrap items-center gap-1 p-2 border-b border-slate-100 bg-slate-50/50 select-none">
               <div className="flex space-x-1 border-r border-slate-200 pr-2 mr-1">
-                <ToolbarBtn icon={Bold} title="加粗 (Ctrl+B)" onClick={() => execCmd('bold')} />
-                <ToolbarBtn icon={Italic} title="斜体 (Ctrl+I)" onClick={() => execCmd('italic')} />
-                <ToolbarBtn icon={Underline} title="下划线 (Ctrl+U)" onClick={() => execCmd('underline')} />
-                <ToolbarBtn icon={Strikethrough} title="删除线" onClick={() => execCmd('strikeThrough')} />
+                <ToolbarBtn icon={Bold} title="加粗" action={() => execCmd('bold')} />
+                <ToolbarBtn icon={Italic} title="斜体" action={() => execCmd('italic')} />
+                <ToolbarBtn icon={Underline} title="下划线" action={() => execCmd('underline')} />
+                <ToolbarBtn icon={Strikethrough} title="删除线" action={() => execCmd('strikeThrough')} />
               </div>
               
               <div className="flex space-x-1 border-r border-slate-200 pr-2 mr-1">
-                <ToolbarBtn icon={Heading1} title="大标题" onClick={() => execCmd('formatBlock', 'H3')} />
-                <ToolbarBtn icon={Heading2} title="小标题" onClick={() => execCmd('formatBlock', 'H4')} />
-                <ToolbarBtn icon={Quote} title="引用块" onClick={() => execCmd('formatBlock', 'BLOCKQUOTE')} />
-                <ToolbarBtn icon={Code} title="代码块" onClick={() => execCmd('formatBlock', 'PRE')} />
+                <ToolbarBtn icon={Heading1} title="大标题" action={() => execCmd('formatBlock', 'H3')} />
+                <ToolbarBtn icon={Heading2} title="小标题" action={() => execCmd('formatBlock', 'H4')} />
+                <ToolbarBtn icon={Quote} title="引用块" action={() => execCmd('formatBlock', 'BLOCKQUOTE')} />
+                <ToolbarBtn icon={Code} title="代码块" action={() => execCmd('formatBlock', 'PRE')} />
               </div>
 
               <div className="flex space-x-1 border-r border-slate-200 pr-2 mr-1">
-                 <ToolbarBtn icon={List} title="无序列表" onClick={() => execCmd('insertUnorderedList')} />
+                 <ToolbarBtn icon={List} title="列表" action={() => execCmd('insertUnorderedList')} />
               </div>
 
               <div className="flex space-x-1">
-                 <ToolbarBtn icon={AlignLeft} title="左对齐" onClick={() => execCmd('justifyLeft')} />
-                 <ToolbarBtn icon={AlignCenter} title="居中" onClick={() => execCmd('justifyCenter')} />
-                 <ToolbarBtn icon={AlignRight} title="右对齐" onClick={() => execCmd('justifyRight')} />
+                 <ToolbarBtn icon={AlignLeft} title="左对齐" action={() => execCmd('justifyLeft')} />
+                 <ToolbarBtn icon={AlignCenter} title="居中" action={() => execCmd('justifyCenter')} />
+                 <ToolbarBtn icon={AlignRight} title="右对齐" action={() => execCmd('justifyRight')} />
               </div>
             </div>
 
-            {/* Editable Area */}
             <div
               ref={editorRef}
               contentEditable
-              className="w-full p-5 outline-none overflow-y-auto prose prose-slate max-w-none text-slate-700"
-              style={{ minHeight: '320px', maxHeight: '500px' }} // 👈 这里增大了高度
+              className="rich-editor w-full p-5 outline-none overflow-y-auto max-w-none text-slate-700 leading-relaxed"
+              style={{ minHeight: '320px', maxHeight: '500px' }}
               onInput={(e) => setNotes(e.currentTarget.innerHTML)}
-              placeholder="在这里粘贴或输入笔记..."
             />
           </div>
           
@@ -213,7 +223,6 @@ const AddVideo: React.FC<AddVideoProps> = ({ onSave, onCancel }) => {
           )}
           
           <div className="grid md:grid-cols-2 gap-6">
-            {/* Vocabulary Selection */}
             <div>
               <div className="flex items-center justify-between mb-3">
                 <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wide">重点词汇 ({selectedVocabIndices.size})</h4>
@@ -250,7 +259,6 @@ const AddVideo: React.FC<AddVideoProps> = ({ onSave, onCancel }) => {
               )}
             </div>
 
-            {/* Grammar Selection */}
             <div>
               <div className="flex items-center justify-between mb-3">
                  <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wide">语法知识点 ({selectedGrammarIndices.size})</h4>
@@ -290,7 +298,6 @@ const AddVideo: React.FC<AddVideoProps> = ({ onSave, onCancel }) => {
         </div>
       )}
 
-      {/* Save Button */}
       <div className="flex justify-end pt-4">
         <button
           onClick={handleSave}
