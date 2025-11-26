@@ -97,4 +97,72 @@ const ReviewSession: React.FC<ReviewSessionProps> = ({ entriesToReview, onComple
                   </div>
                 )}
 
-                {currentEntry
+                {currentEntry.structuredVocabulary.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-400 uppercase mb-2">重点词汇</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {currentEntry.structuredVocabulary.map((v, i) => (
+                        <span key={i} className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-white border border-slate-200 text-slate-700" title={`${v.definition} - ${v.example}`}>
+                          {v.word}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                <div>
+                   <h4 className="text-xs font-bold text-slate-400 uppercase mb-2">原始笔记</h4>
+                   {/* 👇 修复这里：使用 dangerouslySetInnerHTML 显示富文本 */}
+                   <div 
+                     className="rich-text-display text-sm text-slate-600 leading-relaxed"
+                     dangerouslySetInnerHTML={{ __html: currentEntry.rawNotes }}
+                   />
+                </div>
+             </div>
+          </div>
+        ) : (
+           // 👇 修复这里：使用 flex-1 避免布局覆盖问题 (上次修复过的，再次确认)
+           <div className="p-8 flex items-center justify-center bg-white flex-1 w-full">
+              <button 
+                onClick={() => setShowAnswer(true)}
+                className="px-8 py-3 bg-slate-900 text-white rounded-xl font-medium shadow-lg hover:bg-slate-800 transition-all transform hover:-translate-y-1"
+              >
+                显示笔记
+              </button>
+           </div>
+        )}
+      </div>
+
+      {/* Controls */}
+      {showAnswer && (
+        <div className="mt-8 grid grid-cols-3 gap-4">
+          <button 
+            onClick={() => handleRate(1)}
+            className="flex flex-col items-center justify-center p-4 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl transition-colors border border-red-100"
+          >
+            <RotateCcw size={20} className="mb-1" />
+            <span className="font-bold text-sm">忘记</span>
+          </button>
+          
+          <button 
+            onClick={() => handleRate(2)}
+            className="flex flex-col items-center justify-center p-4 bg-yellow-50 hover:bg-yellow-100 text-yellow-600 rounded-xl transition-colors border border-yellow-100"
+          >
+            <Clock size={20} className="mb-1" />
+            <span className="font-bold text-sm">模糊</span>
+          </button>
+
+          <button 
+            onClick={() => handleRate(4)}
+            className="flex flex-col items-center justify-center p-4 bg-green-50 hover:bg-green-100 text-green-600 rounded-xl transition-colors border border-green-100"
+          >
+            <Check size={20} className="mb-1" />
+            <span className="font-bold text-sm">熟记</span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default ReviewSession;
