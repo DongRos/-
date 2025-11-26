@@ -93,6 +93,20 @@ const VideoLibrary: React.FC<LibraryProps> = ({ entries, onUpdateEntries, onlyFa
   if (selectedEntry) {
     return (
       <div className="animate-fade-in space-y-8 pb-10">
+        {/* 👇 1. 注入样式，专门用于显示富文本笔记 */}
+        <style>{`
+          .rich-text-display h3 { font-size: 1.5em; font-weight: bold; margin-top: 1em; margin-bottom: 0.5em; color: #1e293b; }
+          .rich-text-display h4 { font-size: 1.25em; font-weight: bold; margin-top: 1em; margin-bottom: 0.5em; color: #334155; }
+          .rich-text-display ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 0.5em; }
+          .rich-text-display ol { list-style-type: decimal; padding-left: 1.5em; margin-bottom: 0.5em; }
+          .rich-text-display blockquote { border-left: 4px solid #cbd5e1; padding-left: 1em; color: #64748b; font-style: italic; margin-bottom: 0.5em; background: #f8fafc; py-2; }
+          .rich-text-display pre { background-color: #f1f5f9; padding: 1em; border-radius: 0.5em; font-family: monospace; font-size: 0.9em; overflow-x: auto; margin-bottom: 0.5em; border: 1px solid #e2e8f0; }
+          .rich-text-display b, .rich-text-display strong { font-weight: 700; color: #0f172a; }
+          .rich-text-display i, .rich-text-display em { font-style: italic; }
+          .rich-text-display u { text-decoration: underline; text-decoration-color: #cbd5e1; text-underline-offset: 4px; }
+          .rich-text-display p { margin-bottom: 0.75em; line-height: 1.7; }
+        `}</style>
+
         <div className="flex items-start justify-between">
           <div className="space-y-4 w-full">
             <button 
@@ -189,8 +203,9 @@ const VideoLibrary: React.FC<LibraryProps> = ({ entries, onUpdateEntries, onlyFa
              <FileText size={16} className="mr-2" />
              <h3 className="text-sm font-bold uppercase tracking-wider">原始笔记</h3>
            </div>
+           {/* 👇 2. 使用 dangerouslySetInnerHTML 并应用 rich-text-display 样式类 */}
            <div 
-             className="bg-slate-50 p-4 rounded-xl text-sm text-slate-600 leading-relaxed prose prose-sm max-w-none"
+             className="rich-text-display bg-slate-50 p-6 rounded-xl text-sm text-slate-600 leading-relaxed border border-slate-100"
              dangerouslySetInnerHTML={{ __html: selectedEntry.rawNotes }}
            />
         </div>
@@ -304,12 +319,10 @@ const VideoLibrary: React.FC<LibraryProps> = ({ entries, onUpdateEntries, onlyFa
                   ${isSelected ? 'border-primary-500 ring-1 ring-primary-500 bg-primary-50/10' : 'border-slate-100'}
                 `}
               >
-                {/* 👇👇👇 恢复了这里！右上角图标指示器 (在管理模式下能看到) 👇👇👇 */}
                 <div className="absolute top-0 right-0 p-2 flex space-x-1 z-10 pointer-events-none">
                    {entry.isPinned && <Pin size={16} className="text-primary-500 fill-primary-500 transform rotate-45" />}
                    {entry.isFavorite && <Star size={16} className="text-yellow-400 fill-yellow-400" />}
                 </div>
-                {/* 👆👆👆 恢复结束 👆👆👆 */}
 
                 <div className={`absolute left-0 top-0 bottom-0 w-1 ${
                    entry.stage === 3 ? 'bg-green-500' :
@@ -338,6 +351,7 @@ const VideoLibrary: React.FC<LibraryProps> = ({ entries, onUpdateEntries, onlyFa
                         {entry.stage === 0 ? '新学' : entry.stage === 3 ? '已掌握' : '学习中'}
                       </span>
                     </div>
+                    {/* 列表页摘要仍然移除 HTML 标签，保持整洁 */}
                     <p className="text-sm text-slate-500 mt-2 line-clamp-1 max-w-xl opacity-80"
                        dangerouslySetInnerHTML={{ __html: entry.summary || entry.rawNotes.replace(/<[^>]+>/g, '') }}
                     ></p>
