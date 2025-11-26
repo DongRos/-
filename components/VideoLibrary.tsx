@@ -31,18 +31,16 @@ const VideoLibrary: React.FC<LibraryProps> = ({ entries, onUpdateEntries, onlyFa
     return b.dateCreated - a.dateCreated;
   });
 
-  // 👇 新增：处理单项置顶
   const handleTogglePin = (e: React.MouseEvent, entry: StudyEntry) => {
-    e.stopPropagation(); // 阻止跳转详情
+    e.stopPropagation();
     const updated = entries.map(item => 
       item.id === entry.id ? { ...item, isPinned: !item.isPinned } : item
     );
     onUpdateEntries(updated);
   };
 
-  // 👇 新增：处理单项收藏
   const handleToggleFavorite = (e: React.MouseEvent, entry: StudyEntry) => {
-    e.stopPropagation(); // 阻止跳转详情
+    e.stopPropagation();
     const updated = entries.map(item => 
       item.id === entry.id ? { ...item, isFavorite: !item.isFavorite } : item
     );
@@ -191,7 +189,6 @@ const VideoLibrary: React.FC<LibraryProps> = ({ entries, onUpdateEntries, onlyFa
              <FileText size={16} className="mr-2" />
              <h3 className="text-sm font-bold uppercase tracking-wider">原始笔记</h3>
            </div>
-           {/* 使用 dangerouslySetInnerHTML 来正确渲染富文本笔记 */}
            <div 
              className="bg-slate-50 p-4 rounded-xl text-sm text-slate-600 leading-relaxed prose prose-sm max-w-none"
              dangerouslySetInnerHTML={{ __html: selectedEntry.rawNotes }}
@@ -307,7 +304,12 @@ const VideoLibrary: React.FC<LibraryProps> = ({ entries, onUpdateEntries, onlyFa
                   ${isSelected ? 'border-primary-500 ring-1 ring-primary-500 bg-primary-50/10' : 'border-slate-100'}
                 `}
               >
-                {/* 🔴 移除这里原来的绝对定位图标，改为下方直接添加按钮 */}
+                {/* 👇👇👇 恢复了这里！右上角图标指示器 (在管理模式下能看到) 👇👇👇 */}
+                <div className="absolute top-0 right-0 p-2 flex space-x-1 z-10 pointer-events-none">
+                   {entry.isPinned && <Pin size={16} className="text-primary-500 fill-primary-500 transform rotate-45" />}
+                   {entry.isFavorite && <Star size={16} className="text-yellow-400 fill-yellow-400" />}
+                </div>
+                {/* 👆👆👆 恢复结束 👆👆👆 */}
 
                 <div className={`absolute left-0 top-0 bottom-0 w-1 ${
                    entry.stage === 3 ? 'bg-green-500' :
@@ -336,7 +338,6 @@ const VideoLibrary: React.FC<LibraryProps> = ({ entries, onUpdateEntries, onlyFa
                         {entry.stage === 0 ? '新学' : entry.stage === 3 ? '已掌握' : '学习中'}
                       </span>
                     </div>
-                    {/* 使用 dangerouslySetInnerHTML 来移除 HTML 标签显示纯文本摘要，防止列表页显示 <div> */}
                     <p className="text-sm text-slate-500 mt-2 line-clamp-1 max-w-xl opacity-80"
                        dangerouslySetInnerHTML={{ __html: entry.summary || entry.rawNotes.replace(/<[^>]+>/g, '') }}
                     ></p>
@@ -344,7 +345,6 @@ const VideoLibrary: React.FC<LibraryProps> = ({ entries, onUpdateEntries, onlyFa
                   
                   {!isManaging && (
                     <div className="flex items-center pl-3 md:pl-0 flex-shrink-0 space-x-2">
-                       {/* 👇👇👇 新增的按钮区域 👇👇👇 */}
                        <button 
                           onClick={(e) => handleTogglePin(e, entry)}
                           className={`p-2 rounded-full transition-colors ${entry.isPinned ? 'text-primary-500 bg-primary-50' : 'text-slate-300 hover:text-slate-500 hover:bg-slate-100'}`}
@@ -360,7 +360,6 @@ const VideoLibrary: React.FC<LibraryProps> = ({ entries, onUpdateEntries, onlyFa
                        >
                          <Star size={18} className={entry.isFavorite ? "fill-current" : ""} />
                        </button>
-                       {/* 👆👆👆 新增结束 👆👆👆 */}
 
                        <div className="w-px h-5 bg-slate-200 mx-2"></div>
 
