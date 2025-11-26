@@ -1,4 +1,3 @@
-// components/VideoLibrary.tsx
 import React, { useState, useEffect } from 'react';
 import { StudyEntry } from '../types';
 import { Search, Calendar, ChevronRight, ArrowLeft, Book, Type, FileText, Hash, Star, Settings, Trash2, Pin, CheckSquare, Square, X, Check, AlertCircle } from 'lucide-react';
@@ -6,45 +5,54 @@ import { Search, Calendar, ChevronRight, ArrowLeft, Book, Type, FileText, Hash, 
 interface LibraryProps {
   entries: StudyEntry[];
   onUpdateEntries: (entries: StudyEntry[]) => void;
-  onlyFavorites?: boolean; // 👈 新增这个属性
+  onlyFavorites?: boolean;
 }
 
-const VideoLibrary: React.FC<LibraryProps> = ({ entries, onUpdateEntries, onlyFavorites = false }) => { // 👈 默认值为 false
+const VideoLibrary: React.FC<LibraryProps> = ({ entries, onUpdateEntries, onlyFavorites = false }) => {
   const [search, setSearch] = useState('');
   const [selectedEntry, setSelectedEntry] = useState<StudyEntry | null>(null);
   
-  // Management Mode State
   const [isManaging, setIsManaging] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleteConfirm, setDeleteConfirm] = useState(false);
 
-  // Reset delete confirmation when selection or mode changes
   useEffect(() => {
     setDeleteConfirm(false);
   }, [selectedIds, isManaging]);
 
-  // Sorting: Pinned items first, then by date (newest first)
   const filtered = entries.filter(e => {
     const matchesSearch = e.title.toLowerCase().includes(search.toLowerCase()) || 
                           e.rawNotes.toLowerCase().includes(search.toLowerCase());
-    // 👇 新增筛选逻辑
     const matchesFav = onlyFavorites ? e.isFavorite : true;
     return matchesSearch && matchesFav;
   }).sort((a, b) => {
-    // Check pinned status first
     if (a.isPinned && !b.isPinned) return -1;
     if (!a.isPinned && b.isPinned) return 1;
-    // Then sort by date
     return b.dateCreated - a.dateCreated;
   });
 
+  // 👇 新增：处理单项置顶
+  const handleTogglePin = (e: React.MouseEvent, entry: StudyEntry) => {
+    e.stopPropagation(); // 阻止跳转详情
+    const updated = entries.map(item => 
+      item.id === entry.id ? { ...item, isPinned: !item.isPinned } : item
+    );
+    onUpdateEntries(updated);
+  };
+
+  // 👇 新增：处理单项收藏
+  const handleToggleFavorite = (e: React.MouseEvent, entry: StudyEntry) => {
+    e.stopPropagation(); // 阻止跳转详情
+    const updated = entries.map(item => 
+      item.id === entry.id ? { ...item, isFavorite: !item.isFavorite } : item
+    );
+    onUpdateEntries(updated);
+  };
+
   const toggleSelection = (id: string) => {
     const newSet = new Set(selectedIds);
-    if (newSet.has(id)) {
-      newSet.delete(id);
-    } else {
-      newSet.add(id);
-    }
+    if (newSet.has(id)) newSet.delete(id);
+    else newSet.add(id);
     setSelectedIds(newSet);
   };
 
@@ -58,33 +66,17 @@ const VideoLibrary: React.FC<LibraryProps> = ({ entries, onUpdateEntries, onlyFa
 
   const handleBatchAction = (action: 'pin' | 'favorite') => {
     if (selectedIds.size === 0) return;
-    
     setDeleteConfirm(false);
-
     let updated = [...entries];
-    
     if (action === 'pin') {
       const selectedEntries = updated.filter(e => selectedIds.has(e.id));
       const allPinned = selectedEntries.every(e => e.isPinned);
-      
-      updated = updated.map(e => {
-        if (selectedIds.has(e.id)) {
-          return { ...e, isPinned: !allPinned };
-        }
-        return e;
-      });
+      updated = updated.map(e => selectedIds.has(e.id) ? { ...e, isPinned: !allPinned } : e);
     } else if (action === 'favorite') {
        const selectedEntries = updated.filter(e => selectedIds.has(e.id));
        const allFav = selectedEntries.every(e => e.isFavorite);
-       
-       updated = updated.map(e => {
-        if (selectedIds.has(e.id)) {
-          return { ...e, isFavorite: !allFav };
-        }
-        return e;
-      });
+       updated = updated.map(e => selectedIds.has(e.id) ? { ...e, isFavorite: !allFav } : e);
     }
-    
     onUpdateEntries(updated);
   };
 
@@ -93,20 +85,16 @@ const VideoLibrary: React.FC<LibraryProps> = ({ entries, onUpdateEntries, onlyFa
       setDeleteConfirm(true);
       return;
     }
-
     const updated = entries.filter(e => !selectedIds.has(e.id));
     onUpdateEntries(updated);
-    
     setIsManaging(false);
     setSelectedIds(new Set());
     setDeleteConfirm(false);
   };
 
-  // Detail View Component
   if (selectedEntry) {
     return (
       <div className="animate-fade-in space-y-8 pb-10">
-        {/* Header */}
         <div className="flex items-start justify-between">
           <div className="space-y-4 w-full">
             <button 
@@ -137,20 +125,16 @@ const VideoLibrary: React.FC<LibraryProps> = ({ entries, onUpdateEntries, onlyFa
           </div>
         </div>
 
-        {/* Summary Card */}
         {selectedEntry.summary && (
           <div className="bg-gradient-to-r from-indigo-50 to-slate-50 p-6 rounded-2xl border border-indigo-100">
             <div className="flex items-center mb-3">
               <Hash size={18} className="text-indigo-500 mr-2" />
               <h3 className="font-bold text-indigo-900">内容摘要</h3>
             </div>
-            <p className="text-indigo-800/80 text-sm leading-relaxed">
-              {selectedEntry.summary}
-            </p>
+            <p className="text-indigo-800/80 text-sm leading-relaxed">{selectedEntry.summary}</p>
           </div>
         )}
 
-        {/* Vocabulary Grid */}
         <div>
           <div className="flex items-center mb-4 space-x-2">
             <div className="p-2 bg-orange-100 rounded-lg text-orange-600">
@@ -158,7 +142,6 @@ const VideoLibrary: React.FC<LibraryProps> = ({ entries, onUpdateEntries, onlyFa
             </div>
             <h2 className="text-xl font-bold text-slate-800">重点词汇 ({selectedEntry.structuredVocabulary.length})</h2>
           </div>
-          
           {selectedEntry.structuredVocabulary.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {selectedEntry.structuredVocabulary.map((vocab, idx) => (
@@ -178,7 +161,6 @@ const VideoLibrary: React.FC<LibraryProps> = ({ entries, onUpdateEntries, onlyFa
           )}
         </div>
 
-        {/* Grammar Grid */}
         <div>
           <div className="flex items-center mb-4 space-x-2">
              <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
@@ -186,7 +168,6 @@ const VideoLibrary: React.FC<LibraryProps> = ({ entries, onUpdateEntries, onlyFa
             </div>
             <h2 className="text-xl font-bold text-slate-800">语法知识 ({selectedEntry.structuredGrammar.length})</h2>
           </div>
-
           {selectedEntry.structuredGrammar.length > 0 ? (
             <div className="grid grid-cols-1 gap-4">
               {selectedEntry.structuredGrammar.map((grammar, idx) => (
@@ -205,28 +186,26 @@ const VideoLibrary: React.FC<LibraryProps> = ({ entries, onUpdateEntries, onlyFa
           )}
         </div>
 
-        {/* Raw Notes */}
         <div className="pt-4 border-t border-slate-200">
            <div className="flex items-center mb-4 text-slate-400">
              <FileText size={16} className="mr-2" />
              <h3 className="text-sm font-bold uppercase tracking-wider">原始笔记</h3>
            </div>
-           <div className="bg-slate-50 p-4 rounded-xl text-sm text-slate-500 whitespace-pre-wrap leading-relaxed font-mono">
-             {selectedEntry.rawNotes}
-           </div>
+           {/* 使用 dangerouslySetInnerHTML 来正确渲染富文本笔记 */}
+           <div 
+             className="bg-slate-50 p-4 rounded-xl text-sm text-slate-600 leading-relaxed prose prose-sm max-w-none"
+             dangerouslySetInnerHTML={{ __html: selectedEntry.rawNotes }}
+           />
         </div>
       </div>
     );
   }
 
-  // List View
   return (
     <div className="space-y-6 animate-fade-in relative pb-20">
       
-      {/* Header Actions */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          {/* 👇 动态标题 */}
           <h1 className="text-2xl font-bold text-slate-900">{onlyFavorites ? '我的收藏' : '我的知识库'}</h1>
           <p className="text-slate-500">
             {isManaging ? `已选择 ${selectedIds.size} 个项目` : (onlyFavorites ? '回顾你收藏的重点内容。' : '管理和回顾你的学习笔记。')}
@@ -234,7 +213,6 @@ const VideoLibrary: React.FC<LibraryProps> = ({ entries, onUpdateEntries, onlyFa
         </div>
         
         <div className="flex items-center space-x-3">
-          {/* Custom Search Bar */}
           <div className={`relative transition-all duration-300 ${isManaging ? 'opacity-0 w-0 pointer-events-none' : 'opacity-100 w-full md:w-auto'}`}>
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
             <input 
@@ -263,7 +241,6 @@ const VideoLibrary: React.FC<LibraryProps> = ({ entries, onUpdateEntries, onlyFa
         </div>
       </div>
 
-      {/* Batch Action Bar */}
       {isManaging && (
         <div className="sticky top-0 z-30 bg-white/90 backdrop-blur-md p-4 rounded-xl shadow-lg border border-slate-200 flex items-center justify-between animate-slide-in-down mb-4">
           <button onClick={toggleAll} className="flex items-center text-sm font-bold text-slate-600 hover:text-slate-900">
@@ -309,7 +286,6 @@ const VideoLibrary: React.FC<LibraryProps> = ({ entries, onUpdateEntries, onlyFa
         </div>
       )}
 
-      {/* List */}
       <div className="grid gap-4">
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-slate-400">
@@ -331,10 +307,7 @@ const VideoLibrary: React.FC<LibraryProps> = ({ entries, onUpdateEntries, onlyFa
                   ${isSelected ? 'border-primary-500 ring-1 ring-primary-500 bg-primary-50/10' : 'border-slate-100'}
                 `}
               >
-                <div className="absolute top-0 right-0 p-2 flex space-x-1">
-                   {entry.isPinned && <Pin size={16} className="text-primary-500 fill-primary-500 transform rotate-45" />}
-                   {entry.isFavorite && <Star size={16} className="text-yellow-400 fill-yellow-400" />}
-                </div>
+                {/* 🔴 移除这里原来的绝对定位图标，改为下方直接添加按钮 */}
 
                 <div className={`absolute left-0 top-0 bottom-0 w-1 ${
                    entry.stage === 3 ? 'bg-green-500' :
@@ -363,23 +336,34 @@ const VideoLibrary: React.FC<LibraryProps> = ({ entries, onUpdateEntries, onlyFa
                         {entry.stage === 0 ? '新学' : entry.stage === 3 ? '已掌握' : '学习中'}
                       </span>
                     </div>
-                    <p className="text-sm text-slate-500 mt-2 line-clamp-1 max-w-xl opacity-80">{entry.summary || entry.rawNotes}</p>
+                    {/* 使用 dangerouslySetInnerHTML 来移除 HTML 标签显示纯文本摘要，防止列表页显示 <div> */}
+                    <p className="text-sm text-slate-500 mt-2 line-clamp-1 max-w-xl opacity-80"
+                       dangerouslySetInnerHTML={{ __html: entry.summary || entry.rawNotes.replace(/<[^>]+>/g, '') }}
+                    ></p>
                   </div>
                   
                   {!isManaging && (
-                    <div className="flex items-center pl-3 md:pl-0 flex-shrink-0">
-                       <div className="flex space-x-2 mr-6 hidden sm:flex">
-                          {entry.structuredVocabulary.length > 0 && (
-                            <span className="text-xs font-medium px-2 py-1 rounded bg-orange-50 text-orange-600 border border-orange-100 flex items-center">
-                              <Type size={10} className="mr-1" /> {entry.structuredVocabulary.length} 词
-                            </span>
-                          )}
-                          {entry.structuredGrammar.length > 0 && (
-                            <span className="text-xs font-medium px-2 py-1 rounded bg-blue-50 text-blue-600 border border-blue-100 flex items-center">
-                               <Book size={10} className="mr-1" /> {entry.structuredGrammar.length} 语法
-                            </span>
-                          )}
-                       </div>
+                    <div className="flex items-center pl-3 md:pl-0 flex-shrink-0 space-x-2">
+                       {/* 👇👇👇 新增的按钮区域 👇👇👇 */}
+                       <button 
+                          onClick={(e) => handleTogglePin(e, entry)}
+                          className={`p-2 rounded-full transition-colors ${entry.isPinned ? 'text-primary-500 bg-primary-50' : 'text-slate-300 hover:text-slate-500 hover:bg-slate-100'}`}
+                          title={entry.isPinned ? "取消置顶" : "置顶"}
+                       >
+                         <Pin size={18} className={entry.isPinned ? "fill-current" : ""} />
+                       </button>
+
+                       <button 
+                          onClick={(e) => handleToggleFavorite(e, entry)}
+                          className={`p-2 rounded-full transition-colors ${entry.isFavorite ? 'text-yellow-400 bg-yellow-50' : 'text-slate-300 hover:text-slate-500 hover:bg-slate-100'}`}
+                          title={entry.isFavorite ? "取消收藏" : "收藏"}
+                       >
+                         <Star size={18} className={entry.isFavorite ? "fill-current" : ""} />
+                       </button>
+                       {/* 👆👆👆 新增结束 👆👆👆 */}
+
+                       <div className="w-px h-5 bg-slate-200 mx-2"></div>
+
                        <ChevronRight className="text-slate-300 group-hover:text-primary-500 transition-colors" size={20} />
                     </div>
                   )}
