@@ -93,7 +93,6 @@ const VideoLibrary: React.FC<LibraryProps> = ({ entries, onUpdateEntries, onlyFa
   if (selectedEntry) {
     return (
       <div className="animate-fade-in space-y-8 pb-10">
-        {/* 👇 1. 注入样式，专门用于显示富文本笔记 */}
         <style>{`
           .rich-text-display h3 { font-size: 1.5em; font-weight: bold; margin-top: 1em; margin-bottom: 0.5em; color: #1e293b; }
           .rich-text-display h4 { font-size: 1.25em; font-weight: bold; margin-top: 1em; margin-bottom: 0.5em; color: #334155; }
@@ -137,6 +136,7 @@ const VideoLibrary: React.FC<LibraryProps> = ({ entries, onUpdateEntries, onlyFa
           </div>
         </div>
 
+        {/* 1. 内容摘要 (保持在最上面) */}
         {selectedEntry.summary && (
           <div className="bg-gradient-to-r from-indigo-50 to-slate-50 p-6 rounded-2xl border border-indigo-100">
             <div className="flex items-center mb-3">
@@ -147,6 +147,19 @@ const VideoLibrary: React.FC<LibraryProps> = ({ entries, onUpdateEntries, onlyFa
           </div>
         )}
 
+        {/* 2. 原始笔记 (从最下面移到了这里) */}
+        <div className="pt-4 border-t border-slate-200">
+           <div className="flex items-center mb-4 text-slate-400">
+             <FileText size={16} className="mr-2" />
+             <h3 className="text-sm font-bold uppercase tracking-wider">原始笔记</h3>
+           </div>
+           <div 
+             className="rich-text-display bg-slate-50 p-6 rounded-xl text-sm text-slate-600 leading-relaxed border border-slate-100"
+             dangerouslySetInnerHTML={{ __html: selectedEntry.rawNotes }}
+           />
+        </div>
+
+        {/* 3. 重点词汇 */}
         <div>
           <div className="flex items-center mb-4 space-x-2">
             <div className="p-2 bg-orange-100 rounded-lg text-orange-600">
@@ -173,6 +186,7 @@ const VideoLibrary: React.FC<LibraryProps> = ({ entries, onUpdateEntries, onlyFa
           )}
         </div>
 
+        {/* 4. 语法知识 (放在最后) */}
         <div>
           <div className="flex items-center mb-4 space-x-2">
              <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
@@ -198,17 +212,6 @@ const VideoLibrary: React.FC<LibraryProps> = ({ entries, onUpdateEntries, onlyFa
           )}
         </div>
 
-        <div className="pt-4 border-t border-slate-200">
-           <div className="flex items-center mb-4 text-slate-400">
-             <FileText size={16} className="mr-2" />
-             <h3 className="text-sm font-bold uppercase tracking-wider">原始笔记</h3>
-           </div>
-           {/* 👇 2. 使用 dangerouslySetInnerHTML 并应用 rich-text-display 样式类 */}
-           <div 
-             className="rich-text-display bg-slate-50 p-6 rounded-xl text-sm text-slate-600 leading-relaxed border border-slate-100"
-             dangerouslySetInnerHTML={{ __html: selectedEntry.rawNotes }}
-           />
-        </div>
       </div>
     );
   }
@@ -351,7 +354,6 @@ const VideoLibrary: React.FC<LibraryProps> = ({ entries, onUpdateEntries, onlyFa
                         {entry.stage === 0 ? '新学' : entry.stage === 3 ? '已掌握' : '学习中'}
                       </span>
                     </div>
-                    {/* 列表页摘要仍然移除 HTML 标签，保持整洁 */}
                     <p className="text-sm text-slate-500 mt-2 line-clamp-1 max-w-xl opacity-80"
                        dangerouslySetInnerHTML={{ __html: entry.summary || entry.rawNotes.replace(/<[^>]+>/g, '') }}
                     ></p>
