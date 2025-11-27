@@ -21,7 +21,7 @@ jobs:
       - name: 3. 安装依赖 (包括 Capacitor)
         run: |
           npm install
-          npm install @capacitor/core @capacitor/cli @capacitor/android
+          npm install @capacitor/core @capacitor/cli @capacitor/android@6
 
       - name: 4. 打包网页代码
         env:
